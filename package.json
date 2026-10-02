@@ -1,0 +1,49 @@
+{
+  "name": "pen-and-sword",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Pen and Sword — a self-publishing studio: write, dictate, edit, format, design, and prepare manuscripts for Amazon KDP or traditional publishers.",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -n web,api -c cyan,magenta \"vite\" \"tsx watch server/index.ts\"",
+    "build": "tsc --noEmit -p . && vite build",
+    "start": "NODE_ENV=production tsx server/index.ts",
+    "typecheck": "tsc --noEmit -p .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.4",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "concurrently": "^10.0.5",
+    "jsdom": "^29.1.1",
+    "tsx": "^4.23.15",
+    "typescript": "5.9",
+    "vite": "^8.3.2",
+    "vitest": "^5.0.3"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.131.0",
+    "@tiptap/extension-highlight": "^3.31.4",
+    "@tiptap/extension-text-align": "^3.31.4",
+    "@tiptap/extension-typography": "^3.31.4",
+    "@tiptap/extensions": "^3.31.4",
+    "@tiptap/pm": "^3.31.4",
+    "@tiptap/react": "^3.31.4",
+    "@tiptap/starter-kit": "^3.31.4",
+    "dexie": "^4.4.6",
+    "dexie-react-hooks": "^4.4.0",
+    "docx": "^9.8.1",
+    "dotenv": "^18.0.5",
+    "express": "^5.2.1",
+    "jspdf": "^4.2.1",
+    "jszip": "^3.10.2",
+    "mammoth": "^1.13.0",
+    "pagedjs": "^0.4.3",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-router-dom": "^7.18.4"
+  }
+}
