@@ -36,6 +36,20 @@
   }
 }
 
+:root[data-theme='dark'] {
+  --paper: #161614;
+  --surface: #1d1d1b;
+  --ink: #ecebe7;
+  --ink-2: #b5b2ab;
+  --ink-3: #7f7b74;
+  --line: #2c2b28;
+  --line-2: #3a3935;
+  --wash: #23221f;
+  --accent: #ecebe7;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 28px rgba(0, 0, 0, .25);
+  color-scheme: dark;
+}
+
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; }
 body {
@@ -198,6 +212,8 @@ input[type='checkbox'] { accent-color: var(--ink); width: 1rem; height: 1rem; }
 }
 .toast.error { background: var(--danger); color: #fff; }
 @keyframes rise { from { opacity: 0; transform: translate(-50%, 8px); } }
+
+.preview-banner { background: var(--wash); color: var(--ink-2); font-size: .8rem; text-align: center; padding: .5rem 1rem; }
 
 .modal-backdrop { position: fixed; inset: 0; background: rgba(20, 18, 14, .32); display: grid; place-items: center; z-index: 50; padding: 1rem; }
 .modal { background: var(--surface); border-radius: 16px; padding: 2rem; width: min(560px, 100%); max-height: 90vh; overflow: auto; box-shadow: var(--shadow); }

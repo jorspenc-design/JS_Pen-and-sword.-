@@ -64,6 +64,11 @@ function ScrollToTop() {
 export default function App() {
   return (
     <ToastProvider>
+      {import.meta.env.VITE_PREVIEW && (
+        <div className="preview-banner">
+          Preview. Writing, importing, editing checks, page layout, and cover design all work here. AI help, dictation, transcription, and file downloads need the app running on your computer.
+        </div>
+      )}
       <HashRouter>
         <ScrollToTop />
         <Routes>
