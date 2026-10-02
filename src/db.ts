@@ -4,7 +4,29 @@ import { todayKey, uid, wordsInHtml } from './lib/util';
 
 // Everything lives in the browser's IndexedDB: the manuscript never leaves the
 // device except when the author explicitly asks the AI for help.
-export const db = new Dexie('pen-and-sword') as Dexie & {
+
+/** Some browsers block storage (private windows, strict privacy settings, sandboxed previews). */
+async function storageWorks(): Promise<boolean> {
+  try {
+    if (!globalThis.indexedDB) return false;
+    const probe = new Promise<boolean>((resolve) => {
+      const req = indexedDB.open('pen-and-sword-probe');
+      req.onsuccess = () => { req.result.close(); resolve(true); };
+      req.onerror = () => resolve(false);
+      req.onblocked = () => resolve(true);
+    });
+    const timeout = new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 3000));
+    return await Promise.race([probe, timeout]);
+  } catch {
+    return false;
+  }
+}
+
+/** False when the browser won't save data; the app then runs in memory for this tab only. */
+export const storagePersistent = await storageWorks();
+const memory = storagePersistent ? null : await import('fake-indexeddb');
+
+export const db = new Dexie('pen-and-sword', memory ? { indexedDB: memory.indexedDB, IDBKeyRange: memory.IDBKeyRange } : undefined) as Dexie & {
   projects: EntityTable<Project, 'id'>;
   chapters: EntityTable<Chapter, 'id'>;
   snapshots: EntityTable<Snapshot, 'id'>;

@@ -141,6 +141,11 @@ function describeError(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
+// During development the app itself is served by Vite; send stray visitors there.
+if (process.env.NODE_ENV !== 'production') {
+  app.get('/', (_req, res) => res.redirect('http://localhost:5173/'));
+}
+
 // In production, serve the built front-end from the same port.
 const dist = path.resolve(here, '../dist');
 if (process.env.NODE_ENV === 'production' && fs.existsSync(dist)) {

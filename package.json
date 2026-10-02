@@ -9,7 +9,8 @@
     "build": "tsc --noEmit -p . && vite build",
     "start": "NODE_ENV=production tsx server/index.ts",
     "typecheck": "tsc --noEmit -p .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "predev": "node scripts/check-node.mjs"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
@@ -38,6 +39,7 @@
     "docx": "^9.8.1",
     "dotenv": "^18.0.5",
     "express": "^5.2.1",
+    "fake-indexeddb": "^6.2.5",
     "jspdf": "^4.2.1",
     "jszip": "^3.10.2",
     "mammoth": "^1.13.0",
@@ -45,5 +47,8 @@
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-router-dom": "^7.18.4"
+  },
+  "engines": {
+    "node": ">=20.19.0"
   }
 }

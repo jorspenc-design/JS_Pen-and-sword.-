@@ -1,7 +1,8 @@
 import { HashRouter, Link, NavLink, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { createContext, useContext, useEffect, type CSSProperties } from 'react';
-import { db, getChapters } from './db';
+import { db, getChapters, storagePersistent } from './db';
+
 import type { Chapter, Project } from './types';
 import { PERSONAS } from './personas';
 import { Avatar, ToastProvider } from './components/ui';
@@ -67,6 +68,11 @@ export default function App() {
       {import.meta.env.VITE_PREVIEW && (
         <div className="preview-banner">
           Preview. Writing, importing, editing checks, page layout, and cover design all work here. AI help, dictation, transcription, and file downloads need the app running on your computer.
+        </div>
+      )}
+      {!storagePersistent && (
+        <div className="preview-banner" style={{ color: 'var(--warn)' }}>
+          This browser isn’t letting Pen and Sword save, so your work will be lost when you close this tab. Use a regular (not private) window, or allow site data for this page.
         </div>
       )}
       <HashRouter>

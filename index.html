@@ -11,7 +11,29 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Replaced by the app once it starts. Shown only if startup is slow or fails. -->
+      <div id="boot" style="max-width: 560px; margin: 18vh auto 0; padding: 0 24px; font: 16px/1.6 Georgia, serif; color: #57544f; animation: boot-in 0s 2.5s both;">
+        <p style="font-size: 26px; color: #1f1e1c; margin: 0 0 12px;">Pen and Sword is starting…</p>
+        <p id="boot-help" style="margin: 0;">If this message doesn’t go away, open the terminal where you ran <code>npm run dev</code> and look for an error, then reload this page.</p>
+      </div>
+      <style>@keyframes boot-in { from { opacity: 0; } to { opacity: 1; } }</style>
+    </div>
+    <script>
+      // Opening index.html straight from the folder can't run the app; say so instead of showing a blank page.
+      if (location.protocol === 'file:') {
+        document.getElementById('boot').style.animation = 'none';
+        document.getElementById('boot-help').innerHTML =
+          'This file can’t be opened directly. In a terminal inside the project folder, run <code>npm run dev</code>, then go to <a href="http://localhost:5173">http://localhost:5173</a>.';
+      }
+      window.addEventListener('error', function (e) {
+        var help = document.getElementById('boot-help');
+        if (help) {
+          document.getElementById('boot').style.animation = 'none';
+          help.textContent = 'Pen and Sword couldn’t start: ' + (e.message || 'a script failed to load') + '. Try reloading. If you’re using an old browser, switch to the latest Chrome, Edge, Firefox, or Safari.';
+        }
+      });
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

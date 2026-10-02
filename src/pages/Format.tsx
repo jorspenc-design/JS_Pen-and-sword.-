@@ -20,6 +20,17 @@ const HEADING_STYLES: { id: ChapterHeadingStyle; label: string; sample: ReactNod
   { id: 'minimal', label: 'Minimal', sample: <small style={{ letterSpacing: '.15em' }}>THE ROAD</small> },
 ];
 
+// The page-layout engine, fetched once and embedded into the preview frame.
+let pagedPromise: Promise<string> | null = null;
+function loadPaged(): Promise<string> {
+  pagedPromise ??= fetch(new URL('vendor/paged.polyfill.js', window.location.href.split('#')[0]).href).then((r) => {
+    if (!r.ok) throw new Error(`Couldn’t load the page-layout engine (${r.status}).`);
+    return r.text();
+  });
+  pagedPromise.catch(() => { pagedPromise = null; });
+  return pagedPromise;
+}
+
 const SCENE_BREAKS = ['❧', '* * *', '⁂', '~', '◆', '❦', '—'];
 
 export default function Format() {
@@ -40,9 +51,14 @@ export default function Format() {
   // Re-paginate when anything that affects layout changes (not the measured page count itself).
   const layoutKey = useMemo(() => JSON.stringify({ ...f, pageCount: 0, t: project.title, a: project.author, s: project.subtitle, m: project.meta, c: chapters.map((c) => [c.id, c.updatedAt, c.order, c.kind, c.title]) }), [f, project.title, project.author, project.subtitle, project.meta, chapters]);
   const debouncedKey = useDebounced(layoutKey, 600);
+  const [pagedCode, setPagedCode] = useState<string | null>(null);
+  const [pagedError, setPagedError] = useState('');
+  useEffect(() => {
+    loadPaged().then(setPagedCode, (e: Error) => setPagedError(e.message));
+  }, []);
   const srcDoc = useMemo(
-    () => buildPrintDocument(project, chapters, new URL('vendor/paged.polyfill.js', window.location.href.split('#')[0]).href),
-    [debouncedKey], // eslint-disable-line react-hooks/exhaustive-deps
+    () => (pagedCode ? buildPrintDocument(project, chapters, pagedCode) : ''),
+    [debouncedKey, pagedCode], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   useEffect(() => setRendering(true), [srcDoc]);
@@ -197,7 +213,11 @@ export default function Format() {
           <button className="btn sm" disabled={!!exporting} onClick={() => run('docx', async () => downloadBlob(await buildPrintDocx(project, chapters), `${slug(project.title)}-${f.trimId}.docx`))}>Word (typeset)</button>
           <button className="btn sm" disabled={!!exporting} onClick={() => setContactOpen(true)}>Manuscript (submission)</button>
         </div>
-        <iframe ref={iframeRef} title="Print preview" srcDoc={srcDoc} />
+        {pagedError ? (
+          <div className="page narrow"><div className="warn-box">{pagedError} Reload the page to try again.</div></div>
+        ) : (
+          <iframe ref={iframeRef} title="Print preview" srcDoc={srcDoc} />
+        )}
       </section>
 
       <Modal open={contactOpen} onClose={() => setContactOpen(false)}>

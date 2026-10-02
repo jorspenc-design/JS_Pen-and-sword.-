@@ -147,10 +147,10 @@ export function buildInteriorBody(project: Project, chapters: Chapter[]): string
 }
 
 /**
- * Full srcdoc for the preview iframe. Paged.js runs inside the iframe and posts
- * the final page count back to the parent window.
+ * Full srcdoc for the preview iframe. Paged.js is embedded (not loaded by URL, which
+ * srcdoc frames resolve unreliably) and posts the final page count back to the parent.
  */
-export function buildPrintDocument(project: Project, chapters: Chapter[], pagedUrl: string): string {
+export function buildPrintDocument(project: Project, chapters: Chapter[], pagedCode: string): string {
   const f = project.format;
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
@@ -188,7 +188,7 @@ export function buildPrintDocument(project: Project, chapters: Chapter[], pagedU
     after: function (flow) { parent.postMessage({ type: 'paged-done', pages: flow.total }, '*'); },
   };
 </script>
-<script src="${pagedUrl}"></script>
+<script>${pagedCode.replace(/<\/script/gi, '<\\/script')}</script>
 </head><body>
 ${buildInteriorBody(project, chapters)}
 </body></html>`;

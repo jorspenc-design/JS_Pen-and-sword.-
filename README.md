@@ -31,6 +31,13 @@ npm run build
 npm start                 # http://localhost:8787
 ```
 
+## If the page is blank or won't load
+
+- **Use the address, not the file.** Run `npm run dev` and open **http://localhost:5173**. Double-clicking `index.html` in the folder can't run the app.
+- **Keep the terminal open.** Closing the window that's running `npm run dev` stops the app.
+- **Check the terminal for errors.** If it says Pen and Sword needs a newer Node.js, install the current LTS version from nodejs.org, then run `npm install` and `npm run dev` again.
+- **Private windows** may block saving. The app still opens, but shows a warning and won't keep your work after the tab closes.
+
 ## Where your work lives
 
 Everything is stored in your browser's local database (IndexedDB) on this computer. Nothing is uploaded except the text you send to the AI when you ask a helper for help. Use **Download backup** on a book's home page now and then, and **Restore backup** on the library page to bring it back or move it to another machine.
