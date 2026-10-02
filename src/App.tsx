@@ -58,7 +58,10 @@ function BookLayout() {
 
 function ScrollToTop() {
   const { pathname } = useLocation();
-  useEffect(() => window.scrollTo(0, 0), [pathname]);
+  useEffect(() => {
+    // Braces matter: newer browsers return a Promise from scrollTo, and an effect must not return one.
+    window.scrollTo(0, 0);
+  }, [pathname]);
   return null;
 }
 

@@ -102,7 +102,7 @@ export function Field({ label, children, hint }: { label: string; children: Reac
 
 export function NumberInput({ value, onChange, step = 0.05, min, max }: { value: number; onChange: (n: number) => void; step?: number; min?: number; max?: number }) {
   const [text, setText] = useState(String(value));
-  useEffect(() => setText(String(value)), [value]);
+  useEffect(() => { setText(String(value)); }, [value]);
   return (
     <input
       type="number"

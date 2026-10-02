@@ -61,7 +61,7 @@ export default function Format() {
     [debouncedKey, pagedCode], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
-  useEffect(() => setRendering(true), [srcDoc]);
+  useEffect(() => { setRendering(true); }, [srcDoc]);
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
       if (e.source !== iframeRef.current?.contentWindow || e.data?.type !== 'paged-done') return;

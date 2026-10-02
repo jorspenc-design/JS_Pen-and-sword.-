@@ -14,7 +14,7 @@ export default function Overview() {
   const navigate = useNavigate();
   const toast = useToast();
   const [draft, setDraft] = useState(project);
-  useEffect(() => setDraft(project), [project.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setDraft(project); }, [project.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const words = chapters.reduce((n, c) => n + wordsInHtml(c.content), 0);
   const today = project.progress[todayKey()] ?? 0;
