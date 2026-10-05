@@ -175,3 +175,38 @@ describe('Utilities', () => {
     expect(markdownToHtml('## Notes\n- **One**\n- Two\n\nText')).toBe('<h3>Notes</h3><ul><li><strong>One</strong></li><li>Two</li></ul><p>Text</p>');
   });
 });
+
+describe('Editions, themes, and KDP checks', () => {
+  it('lists all 16 KDP paperback sizes, five of them hardcover', async () => {
+    const { TRIM_SIZES } = await import('../src/lib/kdp');
+    expect(TRIM_SIZES).toHaveLength(16);
+    expect(TRIM_SIZES.filter((t) => t.hardcover).map((t) => t.id)).toEqual(['5.5x8.5', '6x9', '6.14x9.21', '7x10', '8.25x11']);
+  });
+
+  it('applies hardcover page limits, trim and paper rules, and the large-print minimum', async () => {
+    const { checkInterior } = await import('../src/lib/kdp');
+    const margins = { top: 0.75, bottom: 0.75, inside: 0.875, outside: 0.625 };
+    expect(checkInterior({ margins, edition: 'hardcover', trimId: '6x9', paper: 'cream' }, 60).messages.join(' ')).toMatch(/at least 75/);
+    expect(checkInterior({ margins, edition: 'hardcover', trimId: '6x9', paper: 'cream' }, 600).messages.join(' ')).toMatch(/at most 550/);
+    expect(checkInterior({ margins, edition: 'hardcover', trimId: '5x8', paper: 'cream' }, 200).messages.join(' ')).toMatch(/isn’t offered in hardcover/);
+    expect(checkInterior({ margins, edition: 'hardcover', trimId: '6x9', paper: 'color-standard' }, 200).messages.join(' ')).toMatch(/Standard color/);
+    expect(checkInterior({ margins, edition: 'paperback', largePrint: true, fontSize: 14 }, 200).messages.join(' ')).toMatch(/16pt/);
+    expect(checkInterior({ margins, edition: 'paperback', trimId: '5x8', largePrint: true, fontSize: 16 }, 200).ok).toBe(true);
+  });
+
+  it('only uses fonts the formatter offers, and large print meets 16pt', async () => {
+    const { THEMES } = await import('../src/lib/themes');
+    const { BODY_FONTS, DISPLAY_FONTS } = await import('../src/lib/book');
+    for (const t of THEMES) {
+      expect(BODY_FONTS, t.id).toContain(t.settings.bodyFont);
+      expect(DISPLAY_FONTS, t.id).toContain(t.settings.headingFont);
+    }
+    expect(THEMES.find((t) => t.id === 'large-print')!.settings.fontSize).toBeGreaterThanOrEqual(16);
+  });
+
+  it('spaces block paragraphs instead of indenting them', () => {
+    const p = project();
+    p.format.paragraphStyle = 'block';
+    expect(printCss(p)).toContain('p { text-indent: 0; margin-bottom: .75em; }');
+  });
+});

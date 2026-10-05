@@ -12,6 +12,7 @@ import {
   type BookContext,
   type JsonTaskName,
 } from './prompts.ts';
+import { NoBrowserError, renderPdf } from './pdf.ts';
 
 const PORT = Number(process.env.PORT ?? 8787);
 const MODEL = process.env.CLAUDE_MODEL ?? 'claude-opus-5-5';
@@ -129,6 +130,23 @@ app.post('/api/ai/json', async (req: Request, res: Response) => {
     res.json(JSON.parse(text));
   } catch (err) {
     res.status(502).json({ error: describeError(err) });
+  }
+});
+
+app.post('/api/pdf', async (req: Request, res: Response) => {
+  const { html } = req.body as { html?: string };
+  if (!html) return res.status(400).json({ error: 'Nothing to print.' });
+  try {
+    const { pdf, pages, missingFonts } = await renderPdf(html);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('X-Pages', String(pages));
+    res.setHeader('X-Missing-Fonts', encodeURIComponent(missingFonts.join(',')));
+    res.end(pdf);
+  } catch (err) {
+    if (err instanceof NoBrowserError) {
+      return res.status(503).json({ error: 'No Chrome or Edge found on this computer, so the PDF can’t be made automatically. Install Google Chrome, or use the print dialog instead.' });
+    }
+    res.status(500).json({ error: `Couldn’t make the PDF: ${err instanceof Error ? err.message : String(err)}` });
   }
 });
 

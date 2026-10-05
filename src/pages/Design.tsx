@@ -212,6 +212,11 @@ export default function Design() {
           </div>
         </details>
 
+        {project.format.edition === 'hardcover' && (
+          <div className="warn-box" style={{ marginTop: '1.25rem' }}>
+            This book is set as a hardcover. The full wrap here is sized for paperback. For the hardcover case, download KDP’s cover template for your exact page count and place Theo’s front cover (PNG) on it.
+          </div>
+        )}
         <div style={{ padding: '1.5rem 0' }}>
           <dl className="kv">
             <dt>Trim</dt><dd>{dims.trim.label}</dd>

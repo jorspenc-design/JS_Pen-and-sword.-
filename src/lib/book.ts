@@ -3,7 +3,7 @@ import type { Chapter, Project } from '../types';
 import { escapeHtml, numberToWords, toRoman } from './util';
 
 export const BODY_FONTS = ['EB Garamond', 'Crimson Pro', 'Libre Baskerville', 'Lora', 'Literata', 'Source Serif 4', 'Spectral', 'Merriweather', 'Cormorant Garamond'];
-export const DISPLAY_FONTS = ['Cormorant Garamond', 'Cinzel', 'Playfair Display', 'EB Garamond', 'Libre Baskerville', 'Abril Fatface', 'Bebas Neue', 'Oswald', 'Montserrat', 'Raleway', 'Lato', 'Josefin Sans'];
+export const DISPLAY_FONTS = ['Cormorant Garamond', 'Literata', 'Lora', 'Cinzel', 'Playfair Display', 'EB Garamond', 'Libre Baskerville', 'Abril Fatface', 'Bebas Neue', 'Oswald', 'Montserrat', 'Raleway', 'Lato', 'Josefin Sans'];
 
 export function googleFontsHref(fonts: string[]): string {
   const families = [...new Set(fonts)]

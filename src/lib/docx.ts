@@ -30,6 +30,8 @@ interface BlockOpts {
   size: number; // half-points
   line: number; // 240 = single
   firstLine: number; // twips
+  /** Space after each paragraph (block style), twips. */
+  after?: number;
   justify: boolean;
   sceneBreak: string;
 }
@@ -64,7 +66,7 @@ export function htmlToParagraphs(html: string, opts: BlockOpts): Paragraph[] {
   const doc = new DOMParser().parseFromString(`<body>${smartenHtml(html)}</body>`, 'text/html');
   const paras: Paragraph[] = [];
   let indentNext = false;
-  const spacing = { line: opts.line, lineRule: LineRuleType.AUTO, before: 0, after: 0 };
+  const spacing = { line: opts.line, lineRule: LineRuleType.AUTO, before: 0, after: opts.after ?? 0 };
 
   const block = (el: Element, extra: Partial<ConstructorParameters<typeof Paragraph>[0] & object> = {}, style: RunStyle = {}) => {
     const children: ParagraphChild[] = [];
@@ -172,7 +174,7 @@ export async function buildPrintDocx(project: Project, chapters: Chapter[]): Pro
   const trim = getTrim(f.trimId);
   const font = f.bodyFont;
   const size = Math.round(f.fontSize * 2);
-  const opts: BlockOpts = { font, size, line: Math.round(240 * f.lineHeight * 0.85), firstLine: Math.round(f.indent * f.fontSize * 20), justify: f.justify, sceneBreak: f.sceneBreak || '* * *' };
+  const opts: BlockOpts = { font, size, line: Math.round(240 * f.lineHeight * 0.85), firstLine: f.paragraphStyle === 'block' ? 0 : Math.round(f.indent * f.fontSize * 20), after: f.paragraphStyle === 'block' ? Math.round(f.fontSize * 20 * 0.75) : 0, justify: f.justify, sceneBreak: f.sceneBreak || '* * *' };
   const { preToc, front, body, back } = buildSections(project, chapters);
   const head = f.headingFont;
 

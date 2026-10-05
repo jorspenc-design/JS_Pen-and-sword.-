@@ -44,6 +44,12 @@ export interface Asset {
 export type ChapterHeadingStyle = 'classic' | 'modern' | 'elegant' | 'minimal' | 'bold';
 
 export interface FormatSettings {
+  /** Missing on books created before editions existed; treat as 'paperback'. */
+  edition?: 'paperback' | 'hardcover';
+  largePrint?: boolean;
+  /** Indented paragraphs (fiction) or spaced blocks (much nonfiction). */
+  paragraphStyle?: 'indent' | 'block';
+  themeId?: string;
   trimId: string;
   paper: 'white' | 'cream' | 'color-standard' | 'color-premium';
   bodyFont: string;

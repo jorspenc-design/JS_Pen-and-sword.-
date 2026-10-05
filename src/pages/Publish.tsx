@@ -7,7 +7,7 @@ import type { Chapter, Project, PublishMeta } from '../types';
 import { persona } from '../personas';
 import { Field, PersonaHeader, Progress, Says, useToast } from '../components/ui';
 import { aiHealth, jsonAi, manuscriptText, projectContext, streamAi } from '../lib/ai';
-import { checkMargins } from '../lib/kdp';
+import { checkInterior } from '../lib/kdp';
 import { buildEpub } from '../lib/epub';
 import { buildManuscriptDocx, buildPrintDocx, buildSimpleDocx } from '../lib/docx';
 import { canvasToBlob, ensureFonts, getCoverDims, loadImage, renderEbookCanvas, wrapToPdf } from '../lib/cover';
@@ -36,7 +36,7 @@ export function publishChecklist(project: Project, chapters: Chapter[]): Checkli
     { id: 'description', label: 'Book description written', detail: '150–250 words that make a browser click “Buy”.', auto: true, done: m.description.trim().length > 200, path: 'kdp' },
     { id: 'keywords', label: 'Seven keywords chosen', detail: 'Phrases readers type into Amazon search.', auto: true, done: m.keywords.filter((k) => k.trim()).length >= 7, path: 'kdp' },
     { id: 'categories', label: 'Categories picked', detail: 'Up to three on KDP.', auto: true, done: m.categories.some((k) => k.trim()), path: 'kdp' },
-    { id: 'interior', label: 'Interior typeset and within KDP limits', detail: 'Page count measured, margins checked.', auto: true, done: f.pageCount > 0 && checkMargins(f.margins, f.pageCount).ok, path: 'kdp', link: 'format' },
+    { id: 'interior', label: 'Interior typeset and within KDP limits', detail: 'Page count measured, margins checked.', auto: true, done: f.pageCount > 0 && checkInterior({ margins: f.margins, edition: f.edition, trimId: f.trimId, paper: f.paper, fontSize: f.fontSize, largePrint: f.largePrint }, f.pageCount).ok, path: 'kdp', link: 'format' },
     { id: 'cover', label: 'Cover finished: front, spine, back', detail: 'Sized to the final page count.', auto: false, done: manual('cover'), path: 'kdp', link: 'design' },
     { id: 'isbn', label: 'ISBN decided', detail: 'Free KDP ISBN, or your own from Bowker (needed to list your own imprint).', auto: true, done: Boolean(m.isbnPrint.trim()) || manual('isbn'), path: 'kdp' },
     { id: 'price', label: 'Price set', detail: 'Check comparable books in your category.', auto: true, done: Boolean(m.price.trim()), path: 'kdp' },
@@ -379,6 +379,7 @@ function kdpDetailsText(project: Project): string {
     `List price: ${m.price}`,
     '',
     'Print options:',
+    `  Edition: ${project.format.edition ?? 'paperback'}${project.format.largePrint ? ' (check “Large print”)' : ''}`,
     `  Trim size: ${dims.trim.label}`,
     `  Paper: ${project.format.paper}`,
     `  Bleed: No bleed (interior); cover includes 0.125" bleed`,

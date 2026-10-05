@@ -6,7 +6,8 @@ import { persona } from '../personas';
 import { Avatar, Field, Modal, NumberInput, useDebounced, useToast } from '../components/ui';
 import { buildPrintDocument } from '../lib/print';
 import { BODY_FONTS, DISPLAY_FONTS } from '../lib/book';
-import { PAPER_TYPES, TRIM_SIZES, checkMargins, minGutter, type PaperType } from '../lib/kdp';
+import { EDITION_LIMITS, LARGE_PRINT_MIN_PT, PAPER_TYPES, TRIM_SIZES, checkInterior, getTrim, minGutter, type Edition, type PaperType } from '../lib/kdp';
+import { THEMES } from '../lib/themes';
 import { buildEpub } from '../lib/epub';
 import { buildManuscriptDocx, buildPrintDocx } from '../lib/docx';
 import { canvasToBlob, ensureFonts, loadImage, renderEbookCanvas } from '../lib/cover';
@@ -43,7 +44,11 @@ export default function Format() {
   const [rendering, setRendering] = useState(true);
   const [exporting, setExporting] = useState('');
   const [contactOpen, setContactOpen] = useState(false);
-  const [contact, setContact] = useState(() => localStorage.getItem('pns-contact') ?? '');
+  const [contact, setContact] = useState(() => { try { return localStorage.getItem('pns-contact') ?? ''; } catch { return ''; } });
+  const [exportOpen, setExportOpen] = useState(false);
+  const [missingFonts, setMissingFonts] = useState<string[]>([]);
+  const [pdfReport, setPdfReport] = useState<{ pages: number; missingFonts: string[]; name: string } | null>(null);
+  const edition: Edition = f.edition ?? 'paperback';
 
   const set = (patch: Partial<FormatSettings>) => updateProject(project.id, { format: { ...f, ...patch } });
   const setMargin = (side: keyof FormatSettings['margins'], v: number) => set({ margins: { ...f.margins, [side]: v } });
@@ -67,6 +72,7 @@ export default function Format() {
       if (e.source !== iframeRef.current?.contentWindow || e.data?.type !== 'paged-done') return;
       setRendering(false);
       setPages(e.data.pages);
+      setMissingFonts(e.data.missingFonts ?? []);
       db.projects.get(project.id).then((proj) => {
         if (proj && proj.format.pageCount !== e.data.pages) db.projects.update(project.id, { format: { ...proj.format, pageCount: e.data.pages } });
       });
@@ -75,13 +81,54 @@ export default function Format() {
     return () => window.removeEventListener('message', onMsg);
   }, [project.id]);
 
-  const check = checkMargins(f.margins, pages ?? 0);
+  const check = checkInterior({ margins: f.margins, edition, trimId: f.trimId, paper: f.paper, fontSize: f.fontSize, largePrint: f.largePrint }, pages ?? 0);
   const gutter = minGutter(pages ?? 0);
 
   async function run(label: string, fn: () => Promise<void>) {
     setExporting(label);
     try { await fn(); } catch (e) { toast((e as Error).message, 'error'); } finally { setExporting(''); }
   }
+
+  const pdfName = `${slug(project.title)}-${edition}-interior-${f.trimId}.pdf`;
+
+  // One click: the local server prints with this computer's Chrome or Edge at the exact trim size.
+  // Without it (or in the online preview), fall back to the browser's print dialog.
+  const exportPdf = () => run('pdf', async () => {
+    if (!pagedCode) return;
+    let res: Response;
+    try {
+      res = await fetch('/api/pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ html: buildPrintDocument(project, chapters, pagedCode) }),
+      });
+    } catch {
+      res = new Response(null, { status: 503 });
+    }
+    if (res.status === 503 || res.status === 404) {
+      const err = await res.json().catch(() => null);
+      toast(err?.error ?? 'Opening the print dialog: choose “Save as PDF”, Margins “None”, and turn on “Background graphics”.');
+      iframeRef.current?.contentWindow?.print();
+      return;
+    }
+    if (!res.ok) throw new Error((await res.json().catch(() => ({ error: `PDF failed (${res.status})` }))).error);
+    const blob = await res.blob();
+    const missing = decodeURIComponent(res.headers.get('X-Missing-Fonts') ?? '').split(',').filter(Boolean);
+    downloadBlob(blob, pdfName);
+    setPdfReport({ pages: Number(res.headers.get('X-Pages')) || 0, missingFonts: missing, name: pdfName });
+  });
+
+  const applyTheme = (id: string) => {
+    const t = THEMES.find((x) => x.id === id);
+    if (t) set({ ...t.settings, themeId: id });
+  };
+
+  const setEdition = (next: Edition) => {
+    const patch: Partial<FormatSettings> = { edition: next };
+    if (next === 'hardcover' && !getTrim(f.trimId).hardcover) patch.trimId = '6x9';
+    if (next === 'hardcover' && !PAPER_TYPES[f.paper].hardcover) patch.paper = 'white';
+    set(patch);
+  };
 
   const exportEpub = () => run('epub', async () => {
     let cover: Blob | undefined;
@@ -107,14 +154,36 @@ export default function Format() {
         </div>
 
         <details open>
-          <summary>Book size</summary>
+          <summary>Theme</summary>
           <div className="stack">
+            <div className="tile-grid">
+              {THEMES.map((t) => (
+                <button key={t.id} className={`tile ${f.themeId === t.id ? 'active' : ''}`} onClick={() => applyTheme(t.id)} title={t.bestFor}>
+                  <span className="swatch" style={{ background: 'var(--wash)', fontFamily: `"${t.settings.headingFont}", serif`, fontSize: t.id === 'large-print' ? '1.2rem' : '.95rem' }}>Aa</span>
+                  {t.name}
+                </button>
+              ))}
+            </div>
+            <p className="faint tiny" style={{ margin: 0 }}>{THEMES.find((t) => t.id === f.themeId)?.bestFor ?? 'Pick a starting point, then adjust anything below.'}</p>
+          </div>
+        </details>
+
+        <details open>
+          <summary>Edition & size</summary>
+          <div className="stack">
+            <div className="segmented" style={{ alignSelf: 'flex-start' }}>
+              <button className={edition === 'paperback' ? 'active' : ''} onClick={() => setEdition('paperback')}>Paperback</button>
+              <button className={edition === 'hardcover' ? 'active' : ''} onClick={() => setEdition('hardcover')}>Hardcover</button>
+            </div>
             <select value={f.trimId} onChange={(e) => set({ trimId: e.target.value })}>
-              {TRIM_SIZES.map((t) => <option key={t.id} value={t.id}>{t.label} — {t.note}</option>)}
+              {TRIM_SIZES.filter((t) => edition === 'paperback' || t.hardcover).map((t) => <option key={t.id} value={t.id}>{t.label} — {t.note}</option>)}
             </select>
             <select value={f.paper} onChange={(e) => set({ paper: e.target.value as PaperType })}>
-              {Object.entries(PAPER_TYPES).map(([id, v]) => <option key={id} value={id}>{v.label}</option>)}
+              {Object.entries(PAPER_TYPES).filter(([, v]) => edition === 'paperback' || v.hardcover).map(([id, v]) => <option key={id} value={id}>{v.label}</option>)}
             </select>
+            <p className="faint tiny" style={{ margin: 0 }}>
+              KDP {edition}s: {EDITION_LIMITS[edition].min}–{EDITION_LIMITS[edition].max} pages. The Kindle eBook (EPUB) reflows to any screen, so size doesn’t apply to it.
+            </p>
           </div>
         </details>
 
@@ -160,10 +229,20 @@ export default function Format() {
               <select value={f.headingFont} onChange={(e) => set({ headingFont: e.target.value })}>{DISPLAY_FONTS.map((x) => <option key={x}>{x}</option>)}</select>
             </Field>
             <div className="grid two" style={{ gap: '.75rem' }}>
-              <Field label="Size (pt)"><NumberInput value={f.fontSize} step={0.5} min={8} max={16} onChange={(v) => set({ fontSize: v })} /></Field>
+              <Field label="Size (pt)"><NumberInput value={f.fontSize} step={0.5} min={8} max={24} onChange={(v) => set({ fontSize: v })} /></Field>
               <Field label="Line spacing"><NumberInput value={f.lineHeight} step={0.05} min={1} max={2} onChange={(v) => set({ lineHeight: v })} /></Field>
               <Field label="Indent (em)"><NumberInput value={f.indent} step={0.25} min={0} max={4} onChange={(v) => set({ indent: v })} /></Field>
+              <Field label="Paragraphs">
+                <select value={f.paragraphStyle ?? 'indent'} onChange={(e) => set({ paragraphStyle: e.target.value as FormatSettings['paragraphStyle'] })}>
+                  <option value="indent">Indented</option>
+                  <option value="block">Spaced blocks</option>
+                </select>
+              </Field>
             </div>
+            <label className="check">
+              <input type="checkbox" checked={!!f.largePrint} onChange={(e) => set(e.target.checked ? { largePrint: true, fontSize: Math.max(f.fontSize, LARGE_PRINT_MIN_PT) } : { largePrint: false })} />
+              Large print edition ({LARGE_PRINT_MIN_PT}pt or larger)
+            </label>
             <label className="check"><input type="checkbox" checked={f.justify} onChange={(e) => set({ justify: e.target.checked })} /> Justified text</label>
             <label className="check"><input type="checkbox" checked={f.hyphenate} onChange={(e) => set({ hyphenate: e.target.checked })} /> Hyphenation</label>
           </div>
@@ -195,8 +274,11 @@ export default function Format() {
         </details>
 
         <div className="stack" style={{ padding: '1.5rem 0' }}>
+          {!rendering && missingFonts.length > 0 && (
+            <div className="warn-box">The preview is using stand-in type because {missingFonts.join(' and ')} didn’t load. Check your internet connection; the PDF export waits longer for fonts.</div>
+          )}
           {pages !== null && !rendering && (check.ok
-            ? <div className="ok-box">Margins and page count meet KDP’s print requirements.</div>
+            ? <div className="ok-box">Meets KDP’s {edition} requirements: {getTrim(f.trimId).label}, {pages} pages, margins and gutter checked{f.largePrint ? ', large print' : ''}.</div>
             : <div className="warn-box stack" style={{ gap: '.4rem' }}>{check.messages.map((m) => <span key={m}>{m}</span>)}
                 {f.margins.inside < gutter && <button className="btn sm" onClick={() => setMargin('inside', gutter + 0.125)}>Fix the gutter for me</button>}
               </div>)}
@@ -206,12 +288,10 @@ export default function Format() {
       <section className="preview-pane">
         <div className="preview-bar">
           <span className="small">{rendering ? 'Setting pages…' : `${pages} pages`}</span>
-          <span className="faint small">{TRIM_SIZES.find((t) => t.id === f.trimId)?.label}</span>
+          <span className="faint small">{getTrim(f.trimId).label} · {edition}</span>
           <span className="spacer" />
-          <button className="btn sm primary" disabled={rendering} onClick={() => iframeRef.current?.contentWindow?.print()} title="Opens the print dialog. Choose “Save as PDF”.">Print-ready PDF</button>
-          <button className="btn sm" disabled={!!exporting} onClick={exportEpub}>{exporting === 'epub' ? 'Packing…' : 'EPUB'}</button>
-          <button className="btn sm" disabled={!!exporting} onClick={() => run('docx', async () => downloadBlob(await buildPrintDocx(project, chapters), `${slug(project.title)}-${f.trimId}.docx`))}>Word (typeset)</button>
-          <button className="btn sm" disabled={!!exporting} onClick={() => setContactOpen(true)}>Manuscript (submission)</button>
+          <button className="btn sm primary" disabled={rendering || !!exporting} onClick={exportPdf}>{exporting === 'pdf' ? 'Making PDF…' : `${edition === 'hardcover' ? 'Hardcover' : 'Paperback'} PDF`}</button>
+          <button className="btn sm" onClick={() => setExportOpen(true)}>All formats</button>
         </div>
         {pagedError ? (
           <div className="page narrow"><div className="warn-box">{pagedError} Reload the page to try again.</div></div>
@@ -219,6 +299,51 @@ export default function Format() {
           <iframe ref={iframeRef} title="Print preview" srcDoc={srcDoc} />
         )}
       </section>
+
+      <Modal open={exportOpen || !!pdfReport} onClose={() => { setExportOpen(false); setPdfReport(null); }}>
+        {pdfReport ? (
+          <div className="stack lg">
+            <h2>Your print PDF is ready</h2>
+            <dl className="kv" style={{ fontSize: '.9rem' }}>
+              <dt>File</dt><dd style={{ overflowWrap: 'anywhere' }}>{pdfReport.name}</dd>
+              <dt>Edition</dt><dd>{edition}</dd>
+              <dt>Page size</dt><dd>{getTrim(f.trimId).label} (no bleed)</dd>
+              <dt>Pages</dt><dd>{pdfReport.pages}</dd>
+              <dt>Fonts</dt><dd>{pdfReport.missingFonts.length ? 'Stand-ins used' : 'Embedded'}</dd>
+            </dl>
+            {pdfReport.missingFonts.length > 0 ? (
+              <div className="warn-box">{pdfReport.missingFonts.join(' and ')} didn’t download, so a stand-in typeface was used. Check your internet connection and export again before uploading.</div>
+            ) : checkInterior({ margins: f.margins, edition, trimId: f.trimId, paper: f.paper, fontSize: f.fontSize, largePrint: f.largePrint }, pdfReport.pages).ok ? (
+              <div className="ok-box">Ready for KDP. Upload it as the manuscript on the {edition} content page, and choose “No bleed” and {getTrim(f.trimId).label}.</div>
+            ) : (
+              <div className="warn-box">Check Margot’s notes in the sidebar before uploading.</div>
+            )}
+            <div className="row" style={{ justifyContent: 'flex-end' }}><button className="btn primary" onClick={() => setPdfReport(null)}>Done</button></div>
+          </div>
+        ) : (
+          <div className="stack lg">
+            <div>
+              <h2>Export your book</h2>
+              <p className="muted small" style={{ marginTop: '.4rem' }}>Every file below is made from the same manuscript and settings.</p>
+            </div>
+            {[
+              { title: `${edition === 'hardcover' ? 'Hardcover' : 'Paperback'} interior · PDF`, use: 'Upload to KDP as your print manuscript. Exact trim size, fonts embedded.', action: exportPdf, busy: 'pdf' },
+              { title: 'Kindle eBook · EPUB', use: 'Upload to KDP as your eBook manuscript. Includes your cover and a linked table of contents.', action: exportEpub, busy: 'epub' },
+              { title: 'Word, typeset · DOCX', use: 'Also accepted by KDP, and editable in Word if you want to make final tweaks yourself.', action: () => run('docx', async () => downloadBlob(await buildPrintDocx(project, chapters), `${slug(project.title)}-${f.trimId}.docx`)), busy: 'docx' },
+              { title: 'Manuscript for agents · DOCX', use: 'Standard manuscript format for literary agents and traditional publishers.', action: () => { setExportOpen(false); setContactOpen(true); }, busy: 'ms' },
+            ].map((x) => (
+              <div key={x.title} className="row between" style={{ gap: '1rem', alignItems: 'flex-start' }}>
+                <div className="grow">
+                  <div>{x.title}</div>
+                  <div className="faint small">{x.use}</div>
+                </div>
+                <button className="btn sm" disabled={!!exporting || (x.busy === 'pdf' && rendering)} onClick={x.action}>{exporting === x.busy ? 'Working…' : 'Download'}</button>
+              </div>
+            ))}
+            <p className="faint tiny" style={{ margin: 0 }}>Covers are made by Theo in the Design step.</p>
+          </div>
+        )}
+      </Modal>
 
       <Modal open={contactOpen} onClose={() => setContactOpen(false)}>
         <div className="stack lg">
@@ -236,7 +361,7 @@ export default function Format() {
             <button
               className="btn primary"
               onClick={() => run('ms', async () => {
-                localStorage.setItem('pns-contact', contact);
+                try { localStorage.setItem('pns-contact', contact); } catch { /* storage blocked */ }
                 downloadBlob(await buildManuscriptDocx(project, chapters, contact || project.author), `${slug(project.title)}-manuscript.docx`);
                 setContactOpen(false);
               })}

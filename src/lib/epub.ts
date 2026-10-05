@@ -26,7 +26,7 @@ ${body}
 export function epubCss(project: Project): string {
   const sb = project.format.sceneBreak.replace(/"/g, '\\"') || '* * *';
   return `body { font-family: serif; line-height: 1.5; margin: 0 5%; }
-p { margin: 0; text-indent: 1.4em; text-align: justify; }
+${project.format.paragraphStyle === 'block' ? 'p { margin: 0 0 .8em; text-indent: 0; }' : 'p { margin: 0; text-indent: 1.4em; text-align: justify; }'}
 .ch-head { text-align: center; margin: 3em 0 2em; }
 .ch-label { display: block; font-variant: small-caps; letter-spacing: .15em; font-size: .95em; }
 .ch-name { display: block; font-size: 1.5em; font-style: italic; margin-top: .4em; }

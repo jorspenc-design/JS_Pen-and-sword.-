@@ -61,7 +61,7 @@ export function printCss(project: Project): string {
 html { font-family: ${body}; font-size: ${f.fontSize}pt; line-height: ${f.lineHeight}; color: #000; }
 body { margin: 0; }
 p { margin: 0; text-align: ${f.justify ? 'justify' : 'left'}; hyphens: ${f.hyphenate ? 'auto' : 'manual'}; orphans: 2; widows: 2; }
-p { text-indent: ${f.indent}em; }
+${f.paragraphStyle === 'block' ? 'p { text-indent: 0; margin-bottom: .75em; }' : `p { text-indent: ${f.indent}em; }`}
 h2, h3 { font-family: ${head}; font-weight: 600; break-after: avoid; }
 h2 { font-size: 1.2em; margin: 1.4em 0 .6em; text-align: center; }
 h3 { font-size: 1.05em; margin: 1.2em 0 .4em; }
@@ -180,12 +180,21 @@ export function buildPrintDocument(project: Project, chapters: Chapter[], pagedC
   window.PagedConfig = {
     auto: true,
     before: function () {
-      return Promise.race([fontsReady, new Promise(function (r) { setTimeout(r, 4000); })]).then(function () {
+      // The PDF exporter allows more time (window.__fontWaitMs) since a wrong font must never reach the printer.
+      return Promise.race([fontsReady, new Promise(function (r) { setTimeout(r, window.__fontWaitMs || 4000); })]).then(function () {
         // A stalled font request keeps document.fonts.ready pending, which Paged.js waits on.
         if (!fontsLoaded) fontLink.remove();
       });
     },
-    after: function (flow) { parent.postMessage({ type: 'paged-done', pages: flow.total }, '*'); },
+    after: function (flow) {
+      // Report which chosen typefaces actually loaded, so a fallback font is caught before upload.
+      var faces = Array.from(document.fonts);
+      var missing = ${JSON.stringify([...new Set([f.bodyFont, f.headingFont])])}.filter(function (fam) {
+        return !faces.some(function (face) { return face.family.replace(/["']/g, '') === fam && face.status === 'loaded'; });
+      });
+      window.__pagedResult = { pages: flow.total, missingFonts: missing };
+      if (parent !== window) parent.postMessage({ type: 'paged-done', pages: flow.total, missingFonts: missing }, '*');
+    },
   };
 </script>
 <script>${pagedCode.replace(/<\/script/gi, '<\\/script')}</script>

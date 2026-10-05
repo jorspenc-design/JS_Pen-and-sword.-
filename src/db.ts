@@ -43,6 +43,10 @@ db.version(1).stores({
 });
 
 export const defaultFormat = (): FormatSettings => ({
+  edition: 'paperback',
+  largePrint: false,
+  paragraphStyle: 'indent',
+  themeId: 'classic',
   trimId: '6x9',
   paper: 'cream',
   bodyFont: 'EB Garamond',

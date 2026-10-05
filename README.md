@@ -42,13 +42,34 @@ npm start                 # http://localhost:8787
 
 Everything is stored in your browser's local database (IndexedDB) on this computer. Nothing is uploaded except the text you send to the AI when you ask a helper for help. Use **Download backup** on a book's home page now and then, and **Restore backup** on the library page to bring it back or move it to another machine.
 
-## Notes on publishing output
+## Publishing to Amazon KDP
 
-- **Print-ready PDF.** Margot's button opens the print dialog. Choose **Save as PDF**; the page size is set for you. Use Chrome or Edge for the most faithful results.
-- **KDP specs used.** These are the gutter minimums by page count (0.375"–0.875"), 0.25" minimum outside margins, a 0.125" cover bleed, spine width per page (white 0.002252", cream 0.0025"), and spine text only above 79 pages. Check KDP's current guidelines before you publish.
-- **Fonts.** Book fonts load from Google Fonts. If you're offline, Margot waits a few seconds and then typesets with fallback fonts. Preview again when you're back online before exporting.
-- **Dictation** uses the browser's speech recognition (Chrome, Edge, Safari). **Transcription** downloads an open Whisper speech model once (about 80–250 MB) and then runs locally.
-- **Cover art.** Use images you own or have licensed for commercial use.
+| What you upload to KDP | Where it comes from |
+| --- | --- |
+| Paperback or hardcover interior (PDF) | Margot → **Paperback PDF** / **Hardcover PDF** |
+| Paperback cover (PDF) | Theo → **Print cover PDF** |
+| Kindle eBook (EPUB) | Margot → **All formats** → Kindle eBook |
+| eBook cover (JPG, 1600 × 2560) | Theo → **eBook JPG** (also built into the EPUB) |
+| Book details, description, keywords | Ada → **Download KDP package** (`kdp-details.txt`) |
+
+- **Editions and sizes.** Margot offers all 16 KDP paperback trim sizes and the 5 hardcover sizes. Each edition is checked against its own page limits: paperback 24–828 pages, hardcover 75–550.
+- **Themes.** Eight one-click interior themes (Classic, Devotional, Elegant, Modern, Bold, Minimal, Nonfiction, Large Print). Each one is a starting point you can adjust.
+- **Large print.** The Large Print theme meets KDP's 16-point minimum. Tick "Large print" when you set up the book on KDP.
+- **KDP checks.** Margot checks the inside (gutter) margin against your exact page count (0.375"–0.875"), 0.25" minimum outside margins, page limits, sizes and paper types offered for hardcover, and the large-print minimum. Upload the interior as **No bleed**.
+- **One-click PDF.** The app's local server prints the interior with the Chrome or Edge already on your computer: exact trim size, fonts embedded. If neither browser is installed, it falls back to the print dialog. Choose "Save as PDF", Margins "None", and turn on "Background graphics".
+- **Fonts.** Book fonts download from Google Fonts while you're online. If one fails to load, the PDF result tells you a stand-in was used, so you can export again before uploading.
+- **Hardcover covers** wrap around the boards and need KDP's own cover template. Download it for your page count from KDP and place Theo's front cover on it.
+- **Not yet supported:** images inside the book's pages, so there's no bleed option for the interior.
+
+## How the AI works
+
+Everything except the AI help runs on your own computer: writing, importing, formatting, every export, covers, and in-browser transcription.
+
+- **AI help** (Wren's assistant, Elias's edits, Ada's drafting) calls Anthropic's Claude API through the small server included in this app. That server runs on your computer when you run `npm run dev`, so there's nothing separate to host.
+- You need an **Anthropic API key** (console.anthropic.com). It's billed per use, separately from a Claude.ai subscription.
+- **Dictation** uses your browser's built-in speech recognition. In Chrome, the audio is processed by Google's speech service.
+- **Transcription** of recordings runs on your computer with an open Whisper model, downloaded once.
+- **No upload to KDP from the app.** KDP has no public upload API, so you upload the files on kdp.amazon.com yourself.
 
 ## Development
 
